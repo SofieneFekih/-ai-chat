@@ -5,8 +5,7 @@ const SYSTEM = "You are a friendly demo assistant on Sofiene Ben Fekih's portfol
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).send("Use POST");
-  if (!process.env.GEMINI_API_KEY) return res.status(500).send("Server is missing GEMINI_API_KEY.");
-
+   if (!process.env.GEMINI_API_KEY) return res.status(500).send("Missing key. Found: " + Object.keys(process.env).filter(k => k.toUpperCase().includes("GEMINI")).map(k => k + " (length " + process.env[k].length + ")").join(", "));
   // Basic limits so nobody can burn your free quota with huge requests
   const msgs = Array.isArray(req.body?.messages) ? req.body.messages.slice(-12) : [];
   const contents = msgs
