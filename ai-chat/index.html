@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Chat - Sofiene Ben Fekih</title>
+<meta name="description" content="A streaming AI chat demo built with a serverless function and the Gemini API.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#F6F7F4;--ink:#10233A;--muted:#4F5E76;--line:#D3D9D2;--blue:#1B4F9C;--ai:#E9EEE9;--err:#B3261E;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--paper:#0C1726;--ink:#E8EDF4;--muted:#9BA9BF;--line:#223249;--ai:#13233A;--err:#FF8A80;color-scheme:dark}}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:400 1.0625rem/1.55 Figtree,"Segoe UI",system-ui,sans-serif}
+header{background:var(--blue);color:#F6F7F4;padding:1rem 1.25rem}
+header h1{margin:0;font:800 1.5rem "Bricolage Grotesque","Segoe UI",system-ui,sans-serif;letter-spacing:-.02em}
+header p{margin:.1rem 0 0;opacity:.9;font-size:.95rem}
+header a{color:inherit}
+#log{flex:1;overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem;max-width:760px;width:100%;margin:0 auto}
+.m{max-width:85%;padding:.7rem 1rem;border-radius:1rem;white-space:pre-wrap;overflow-wrap:anywhere;animation:in .2s ease-out}
+.u{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:.3rem}
+.a{align-self:flex-start;background:var(--ai);border-bottom-left-radius:.3rem}
+.a.err{color:var(--err)}
+.a.wait::after{content:"...";animation:b 1s infinite}
+.hint{color:var(--muted);text-align:center;margin:auto}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}@keyframes b{50%{opacity:.2}}
+form{display:flex;gap:.6rem;padding:.9rem 1.25rem;border-top:1px solid var(--line);max-width:760px;width:100%;margin:0 auto}
+textarea{flex:1;resize:none;font:inherit;color:var(--ink);background:var(--ai);border:1px solid var(--line);border-radius:.6rem;padding:.65rem .9rem;max-height:9rem}
+button{font:600 1rem Figtree,sans-serif;background:var(--blue);color:#fff;border:0;border-radius:.6rem;padding:0 1.3rem;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head>
+<body>
+<header><h1>AI Chat</h1><p>Ask in Arabic, French or English. <a href="https://YOUR-USERNAME.github.io">Back to portfolio</a></p></header>
+<main id="log" aria-live="polite"><p class="hint" id="hint">Ask me anything to start.</p></main>
+<form id="f"><textarea id="q" rows="1" placeholder="Type a message" aria-label="Message" maxlength="2000"></textarea><button id="s">Send</button></form>
+<script>
+const log = document.getElementById("log"), q = document.getElementById("q"), s = document.getElementById("s");
+const history = [];
+const add = (cls, text) => { const d = document.createElement("div"); d.className = "m " + cls; d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; };
+
+async function send(text) {
+  document.getElementById("hint")?.remove();
+  add("u", text); history.push({ role: "user", text });
+  const out = add("a wait", ""); s.disabled = true;
+  try {
+    const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history }) });
+    if (!r.ok) throw new Error(await r.text());
+    const reader = r.body.getReader(), dec = new TextDecoder(); let full = "";
+    while (true) {
+      const { done, value } = await reader.read(); if (done) break;
+      full += dec.decode(value, { stream: true });
+      out.classList.remove("wait"); out.textContent = full; log.scrollTop = log.scrollHeight;
+    }
+    if (!full) throw new Error("Empty answer. Please try again.");
+    history.push({ role: "model", text: full });
+  } catch (e) {
+    history.pop(); out.classList.remove("wait"); out.classList.add("err"); out.textContent = e.message || "Something went wrong.";
+  }
+  s.disabled = false; q.focus();
+}
+document.getElementById("f").addEventListener("submit", e => { e.preventDefault(); const t = q.value.trim(); if (!t || s.disabled) return; q.value = ""; q.style.height = ""; send(t); });
+q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("f").requestSubmit(); } });
+q.addEventListener("input", () => { q.style.height = "auto"; q.style.height = q.scrollHeight + "px"; });
+</script>
+</body></html>
